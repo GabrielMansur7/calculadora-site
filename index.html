@@ -306,8 +306,8 @@ dialog::backdrop{background:rgba(3,39,111,0.25)}
     <p class="preview" id="gInfo" style="margin:0"></p>
     <div class="row">
       <div class="field"><label for="gQtd">Quantidade</label><input id="gQtd" inputmode="decimal" placeholder="35.000"></div>
-      <div class="field"><label for="gComp">Comprador</label><input id="gComp" list="gFundos" placeholder="MCRE11" autocomplete="off"></div>
-      <div class="field"><label for="gVend">Vendedor</label><input id="gVend" list="gFundos" placeholder="Maua Log" autocomplete="off"></div>
+      <div class="field"><label for="gComp">Comprador</label><input id="gComp" list="gFundos" placeholder="Escolha ou digite" autocomplete="off"><span class="hint">Pode digitar fundos de terceiros</span></div>
+      <div class="field"><label for="gVend">Vendedor</label><input id="gVend" list="gFundos" placeholder="Escolha ou digite" autocomplete="off"><span class="hint">Pode digitar fundos de terceiros</span></div>
     </div>
     <div class="row">
       <div class="field"><label for="gPuV">PU de venda (curva)</label><input id="gPuV" inputmode="decimal"><span class="hint">Vendedor vende na curva, na data base da calculadora</span></div>
@@ -317,6 +317,9 @@ dialog::backdrop{background:rgba(3,39,111,0.25)}
     <datalist id="gFundos"></datalist>
     <div><button class="btn btn-secondary" type="button" id="gAdd">Adicionar operação</button></div>
     <div id="gLista"></div>
+    <div class="field"><label for="gPara">Destinatários</label><textarea id="gPara" style="min-height:64px" placeholder="Cole a lista do Outlook (Nome &lt;email&gt;; ...). Fica salva no cadastro compartilhado."></textarea>
+      <span class="hint" id="gParaInfo"></span></div>
+    <div class="field"><label>Assunto</label><input id="gAssunto" readonly tabindex="-1"></div>
     <div class="field"><label for="gTxt">E-mail</label><textarea id="gTxt" readonly style="min-height:220px"></textarea>
       <span class="hint">Feche, escolha outro CRI e abra de novo para incluir mais ativos no mesmo e-mail.</span></div>
     <div class="dlg-foot">
@@ -324,7 +327,8 @@ dialog::backdrop{background:rgba(3,39,111,0.25)}
       <span></span>
       <div class="actions">
         <button class="btn btn-ghost" type="button" id="gFechar">Fechar</button>
-        <button class="btn btn-primary" type="button" id="gCopiar">Copiar e-mail</button>
+        <button class="btn btn-secondary" type="button" id="gCopiar">Copiar texto</button>
+        <button class="btn btn-primary" type="button" id="gOutlook">Abrir no Outlook</button>
       </div>
     </div>
   </div>
@@ -737,6 +741,14 @@ function giroTexto(html){
       ops.map(o=>'<ul>'+o.map(([k,v])=>'<li>'+k+': '+esc(v)+'</li>').join('')+'</ul>').join('')+'<p>Obrigado.</p></div>'; }
   return oi+', pessoal,\n\nVamos realizar as seguintes movimentações hoje:\n\n'+ops.map(o=>o.map(([k,v])=>'•\t'+k+': '+v).join('\n')).join('\n\n')+'\n\nObrigado.';
 }
+function giroEmails(){ const t=$('gPara').value||''; const m=t.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)||[]; return [...new Set(m.map(x=>x.toLowerCase()))]; }
+function giroAssunto(){
+  const cs=[...new Set(S.giro.map(g=>g.code))]; if(!cs.length) return '';
+  const lista=cs.length===1? 'CRI '+cs[0] : 'CRIs '+cs.slice(0,-1).join(', ')+' e '+cs[cs.length-1];
+  const d=new Date(), dd=String(d.getDate()).padStart(2,'0'), mm=String(d.getMonth()+1).padStart(2,'0'), yy=String(d.getFullYear()).slice(2);
+  return 'Movimentações - '+lista+' Mauá - '+dd+'/'+mm+'/'+yy;
+}
+function giroParaInfo(){ const n=giroEmails().length; $('gParaInfo').textContent=n? n+' destinatário'+(n>1?'s':'')+' reconhecido'+(n>1?'s':'') : 'Nenhum e-mail reconhecido.'; }
 function giroRender(){
   const L=$('gLista'); L.innerHTML='';
   S.giro.forEach((g,i)=>{ const d=document.createElement('div'); d.className='preview'; d.style.cssText='display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:6px';
@@ -744,7 +756,7 @@ function giroRender(){
     const b=document.createElement('button'); b.type='button'; b.className='btn btn-ghost'; b.textContent='Remover'; b.onclick=()=>{ S.giro.splice(i,1); giroRender(); };
     d.append(t,b); L.append(d); });
   $('gTxt').value=S.giro.length? giroTexto(false) : '';
-  $('gCopiar').disabled=!S.giro.length;
+  $('gCopiar').disabled=!S.giro.length; $('gOutlook').disabled=!S.giro.length; $('gAssunto').value=giroAssunto();
 }
 function abrirGiro(){
   const c=S.cris[S.sel]; if(!c) return;
@@ -754,6 +766,7 @@ function abrirGiro(){
   $('gPuV').value=brN(pv,6); if(last.o.qtde>0&&!$('gQtd').value) $('gQtd').value=brN(last.o.qtde,0);
   const set=new Set(); Object.values(S.cris).forEach(x=>fundosDe(x).forEach(f=>set.add(f))); S.giro.forEach(g=>{ set.add(g.comp); set.add(g.vend); });
   $('gFundos').innerHTML=[...set].sort().map(f=>'<option value="'+f.replace(/"/g,'&quot;')+'">').join('');
+  if(!$('gPara').value) $('gPara').value=S.giroPara||''; giroParaInfo();
   giroCalc(); giroRender(); $('dlgGiro').showModal();
 }
 $('btnGiro').onclick=abrirGiro;
@@ -762,6 +775,15 @@ $('gAdd').onclick=()=>{ const {pv,pc,q}=giroCalc(); const comp=$('gComp').value.
   if(!(q>0)||!comp||!vend||!pc){ toast('Preencha quantidade, comprador, vendedor e PU de venda.'); return; }
   if(comp===vend){ toast('Comprador e vendedor iguais.'); return; }
   S.giro.push({code:S.cris[S.sel].code,q,comp,vend,pv,pc}); $('gVend').value=''; giroRender(); };
+$('gPara').addEventListener('input',giroParaInfo);
+$('gPara').addEventListener('change',async()=>{ const v=$('gPara').value.trim(); if(v===(S.giroPara||'')) return; S.giroPara=v;
+  if(S.db){ try{ await S.db.collection('config').doc('giro').set({destinatarios:v}); toast('Destinatários salvos.'); }catch(e){ toast('Não foi possível salvar os destinatários.'); } } });
+$('gOutlook').onclick=async()=>{
+  const para=giroEmails(); if(!para.length){ toast('Informe os destinatários.'); return; }
+  const url='mailto:'+para.join(';')+'?subject='+encodeURIComponent(giroAssunto())+'&body='+encodeURIComponent(giroTexto(false));
+  try{ if(window.ClipboardItem&&navigator.clipboard.write) await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([giroTexto(false)],{type:'text/plain'}),'text/html':new Blob([giroTexto(true)],{type:'text/html'})})]); }catch(e){}
+  location.href=url;
+};
 $('gLimpar').onclick=()=>{ S.giro=[]; giroRender(); };
 $('gFechar').onclick=()=>$('dlgGiro').close();
 $('gCopiar').onclick=async()=>{
@@ -889,6 +911,7 @@ async function importarCadastro(ev){
   S.db=db; $('status').textContent='Cadastro compartilhado · atualiza ao vivo'; $('btnImport').hidden=false; $('btnSair').hidden=false;
   db.collection('ipcaProj').onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>{ const x=d.data(); if(x&&isFinite(x.v)) m[d.id]=x.v; }); S.ipcaProj=m; $('ipcaBox').dataset.k=''; if(S.sel) recalc(); }, e=>{});
   db.collection('ipca').onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>{ const x=d.data(); if(x&&isFinite(x.v)) m[d.id]=x.v; }); S.ipcaDb=m; $('ipcaBox').dataset.k=''; if(S.sel) recalc(); }, e=>{});
+  db.collection('config').onSnapshot(snap=>{ snap.docs.forEach(d=>{ if(d.id==='giro'){ const x=d.data(); S.giroPara=x&&x.destinatarios||''; } }); }, e=>{});
   db.collection('isin').onSnapshot(snap=>{ const m={}; snap.docs.forEach(d=>{ const x=d.data(); if(x&&x.isin) m[d.id]=String(x.isin); }); S.isin=m; renderList(); if(S.sel && S.cris[S.sel]) select(S.sel,false); }, e=>{});
   let first=true;
   db.collection('cris').onSnapshot(snap=>{
