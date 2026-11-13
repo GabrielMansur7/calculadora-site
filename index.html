@@ -19,9 +19,13 @@
 .loginCard label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:#444}
 .loginCard input{padding:.55rem .7rem;border:1px solid #ccc;border-radius:8px;font-size:.95rem}
 .lgMsg{min-height:1.2em;margin:0;font-size:.8rem;color:#B00020}
+.sitenav{display:flex;gap:6px;max-width:1280px;margin:0 auto;padding:12px 20px 0;font-family:"Century Gothic","Futura","Trebuchet MS",sans-serif;font-weight:700}
+.sitenav a{padding:.4rem .9rem;border-radius:.5rem;text-decoration:none;font-size:.8rem;color:#737373;background:#F0F0F0}
+.sitenav a[aria-current="page"]{background:#03276F;color:#fff}
 </style>
 </head>
 <body>
+<nav class="sitenav"><a href="index.html" aria-current="page">Calculadora de PU</a><a href="dashboard.html">Dashboard FIIs</a></nav>
 <title>Calculadora de PU CRI</title>
 <style>
 @font-face {
@@ -164,7 +168,7 @@ dialog::backdrop{background:rgba(3,39,111,0.25)}
       <span class="sep" aria-hidden="true"></span>
       <div class="apptitle">Calculadora de PU<small>CRIs IPCA+ · base 360 · Tai do Anexo II</small></div>
     </div>
-    <div class="topright"><div class="status" id="status">Conectando ao cadastro…</div><span class="who" id="who"></span><button class="btn btn-secondary btn-sm" id="btnImport" type="button" hidden>Importar cadastro</button><input type="file" id="fileImport" accept=".json,application/json" hidden><button class="btn btn-secondary btn-sm" id="btnSair" type="button" hidden>Sair</button></div>
+    <div style="display:flex;gap:10px;align-items:center"><div class="topright"><div class="status" id="status">Conectando ao cadastro…</div><span class="who" id="who"></span><button class="btn btn-secondary btn-sm" id="btnImport" type="button" hidden>Importar cadastro</button><input type="file" id="fileImport" accept=".json,application/json" hidden><button class="btn btn-secondary btn-sm" id="btnSair" type="button" hidden>Sair</button></div><button class="btn btn-secondary" id="btnExpCad" type="button" style="padding:.3rem .7rem;font-size:.75rem">Exportar cadastro</button></div>
   </header>
 
   <div class="grid">
@@ -691,6 +695,14 @@ $('fFundo').addEventListener('change',()=>{ S.fundo=$('fFundo').value; try{ loca
 $('fBusca').addEventListener('input',()=>{ S.busca=$('fBusca').value; renderList(); });
 $('fCrono').addEventListener('input',()=>{ clearTimeout(prevCrono._t); prevCrono._t=setTimeout(prevCrono,150); });
 
+async function exportarCadastro(){
+  const out={exportadoEm:new Date().toISOString(),cris:S.cris,isin:{},ipca:{},ipcaProj:{}};
+  for(const [k,v] of Object.entries(S.isin)) out.isin[k]={code:k,isin:v};
+  for(const [k,v] of Object.entries(S.ipcaDb)) out.ipca[k]={ym:k,v};
+  for(const [k,v] of Object.entries(S.ipcaProj)) out.ipcaProj[k]={ym:k,v};
+  baixarArquivo('cadastro_calculadora_'+new Date().toISOString().slice(0,10)+'.json', JSON.stringify(out,null,1), 'application/json');
+}
+$('btnExpCad').onclick=exportarCadastro;
 
 // ---------- Supabase (login + banco) ----------
 const SB_URL='https://tbkkhziivznrfidntljl.supabase.co';
