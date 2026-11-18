@@ -172,8 +172,8 @@ window.dash=(()=>{
       <div class="jm-kpi"><span class="lbl">Patrimônio somado</span><span class="val" data-draw="k-pl" data-source="casa" data-field="pl_total">—</span><span class="note" data-draw="k-nf" data-source="casa" data-field="n_fundos">—</span></div>
       <div class="jm-kpi"><span class="lbl">Em CRIs</span><span class="val" data-draw="k-cri" data-source="casa" data-field="valor_cris">—</span><span class="note" data-draw="k-ncri" data-source="casa" data-field="n_cris">—</span></div>
       <div class="jm-kpi"><span class="lbl">Em fundos imobiliários</span><span class="val" data-draw="k-fii" data-source="casa" data-field="valor_fiis">—</span><span class="note">cotas de FIIs e fundos investidos</span></div>
-      <div class="jm-kpi"><span class="lbl">Resultado não realizado em fundos</span><span class="val" data-draw="k-res" data-source="casa" data-field="resultado_liquido">—</span><span class="note">líquido do IR estimado</span></div>
-      <div class="jm-kpi"><span class="lbl">Conferência</span><span class="val" data-draw="k-alertas" data-source="casa" data-field="n_alertas">—</span><span class="note">alertas a verificar</span></div>
+      <div class="jm-kpi"><span class="lbl">Em imóveis</span><span class="val" data-draw="k-imo" data-source="casa" data-field="valor_imoveis">—</span><span class="note" data-draw="k-nimo" data-source="casa" data-field="n_fundos_imoveis">—</span></div>
+      <div class="jm-kpi"><span class="lbl">Em caixa</span><span class="val" data-draw="k-cx" data-source="casa" data-field="valor_caixa">—</span><span class="note">conta corrente, compromissadas e fundos de liquidez</span></div>
     </div>
 
     <div class="jm-card" id="card-composicao">
@@ -685,6 +685,8 @@ dash.calc('casa', {
     pl_total: fundos_view.reduce((a, f) => a + f.pl, 0), n_fundos: fundos_view.length,
     valor_cris: fundos_view.reduce((a, f) => a + f.cri, 0), n_cris: cris_consolidado.length,
     valor_fiis: fundos_view.reduce((a, f) => a + f.fundos_imob, 0),
+    valor_imoveis: fundos_view.reduce((a, f) => a + f.imoveis, 0), n_fundos_imoveis: fundos_view.filter((f) => f.imoveis > 0).length,
+    valor_caixa: fundos_view.reduce((a, f) => a + f.caixa, 0),
     resultado_liquido: pm_view.reduce((a, x) => a + x.liquido, 0),
     n_alertas: conferencia.filter((c) => c.nivel === 'Alerta').length, n_avisos: conferencia.filter((c) => c.nivel === 'Aviso').length,
   }],
@@ -720,7 +722,7 @@ const rowOf = (id, key, val) => { const d = dash.data(id); return d.status === '
 
 [['t-pl', 'pl_total', F.big], ['t-cri', 'valor_cris', F.big], ['t-ncri', 'n_cris', (v) => F.n0.format(v)], ['t-alertas', 'n_alertas', (v) => F.n0.format(v)], ['t-avisos', 'n_avisos', (v) => F.n0.format(v)],
  ['k-pl', 'pl_total', F.big], ['k-nf', 'n_fundos', (v) => F.n0.format(v) + ' fundos'], ['k-cri', 'valor_cris', F.big], ['k-ncri', 'n_cris', (v) => F.n0.format(v) + ' CRIs distintos'],
- ['k-fii', 'valor_fiis', F.big], ['k-res', 'resultado_liquido', F.big], ['k-alertas', 'n_alertas', (v) => F.n0.format(v)]]
+ ['k-fii', 'valor_fiis', F.big], ['k-imo', 'valor_imoveis', F.big], ['k-nimo', 'n_fundos_imoveis', (v) => 'imóveis de ' + F.n0.format(v) + (v === 1 ? ' fundo' : ' fundos')], ['k-cx', 'valor_caixa', F.big]]
   .forEach(([name, field, fmt]) => dash.draw(name, (el) => { const r = one('casa'); setText(el, r ? fmt(r[field]) : null); }));
 
 /* composição: barras horizontais empilhadas */
