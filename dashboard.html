@@ -194,7 +194,7 @@ window.dash=(()=>{
         <table data-source="fundos_view" data-row-key="fundo" id="tb-fundos">
           <thead><tr>
             <th data-field="fundo">Fundo</th><th data-field="administrador">Adm.</th><th data-field="data_carteira">Carteira de</th>
-            <th class="n" data-field="pl">PL gerencial</th><th class="n" data-field="cri">CRIs</th><th class="n hide-sm" data-field="fundos_imob">Fundos imob.</th><th class="n hide-sm" data-field="imoveis">Imóveis</th><th class="n hide-sm" data-field="caixa">Caixa</th><th class="n hide-sm" data-field="outros">Outros</th><th class="n" data-field="n_cris">Nº CRIs</th>
+            <th class="n" data-field="pl">Patrimônio líquido</th><th class="n" data-field="cri">CRIs</th><th class="n hide-sm" data-field="fundos_imob">Fundos imob.</th><th class="n hide-sm" data-field="imoveis">Imóveis</th><th class="n hide-sm" data-field="caixa">Caixa</th><th class="n hide-sm" data-field="outros">Outros</th><th class="n" data-field="n_cris">Nº CRIs</th>
           </tr></thead>
           <tbody data-draw="tb-fundos"></tbody>
         </table>
@@ -208,8 +208,8 @@ window.dash=(()=>{
       <label>Fundo <select class="jm-sel" data-draw="sel-fundo" data-source="fundos" aria-label="Fundo"></select></label>
     </div>
     <div class="jm-kpis">
-      <div class="jm-kpi"><span class="lbl">PL gerencial</span><span class="val" data-draw="f-pl" data-source="fundos_view" data-field="pl">—</span><span class="note" data-draw="f-data" data-source="fundos_view" data-field="data_carteira">—</span></div>
-      <div class="jm-kpi"><span class="lbl">Cota gerencial</span><span class="val" data-draw="f-cota" data-source="fundos_view" data-field="cota_gerencial">—</span><span class="note" data-draw="f-cota-of" data-source="fundos_view" data-field="cota_oficial">—</span></div>
+      <div class="jm-kpi"><span class="lbl">Patrimônio líquido</span><span class="val" data-draw="f-pl" data-source="fundos_view" data-field="pl">—</span><span class="note" data-draw="f-data" data-source="fundos_view" data-field="data_carteira">—</span></div>
+      <div class="jm-kpi"><span class="lbl">Cota patrimonial</span><span class="val" data-draw="f-cota" data-source="fundos_view" data-field="cota_gerencial">—</span><span class="note" data-draw="f-cota-of" data-source="fundos_view" data-field="cota_oficial">—</span></div>
       <div class="jm-kpi"><span class="lbl">Em CRIs</span><span class="val" data-draw="f-cri" data-source="fundos_view" data-field="pct_cri">—</span><span class="note" data-draw="f-ncri" data-source="fundos_view" data-field="n_cris">—</span></div>
       <div class="jm-kpi"><span class="lbl">Marcação dos CRIs contra a curva</span><span class="val" data-draw="f-imp-cota" data-source="impacto_fundo" data-field="impacto_cota">—</span><span class="note" data-draw="f-imp" data-source="impacto_fundo" data-field="impacto">—</span></div>
       <div class="jm-kpi"><span class="lbl">Resultado não realizado em fundos</span><span class="val" data-draw="f-res" data-source="pm_por_fundo" data-field="liquido">—</span><span class="note">líquido do IR estimado</span></div>
@@ -424,7 +424,7 @@ window.dash=(()=>{
         <h2>Carteiras lidas</h2>
         <p class="jm-note">Uma linha por fundo e data. "Substitui" indica que a data já estava no histórico e será trocada pela versão destes arquivos.</p>
         <div class="jm-tablebox short"><table>
-          <thead><tr><th>Fundo</th><th>Adm.</th><th>Data</th><th class="n">PL</th><th class="n">PL gerencial</th><th class="n">Cota gerencial</th><th class="n">CRIs</th><th class="n">Em CRIs</th><th>Situação</th><th>Arquivo</th></tr></thead>
+          <thead><tr><th>Fundo</th><th>Adm.</th><th>Data</th><th class="n">PL oficial</th><th class="n">Patrimônio líquido</th><th class="n">Cota patrimonial</th><th class="n">CRIs</th><th class="n">Em CRIs</th><th>Situação</th><th>Arquivo</th></tr></thead>
           <tbody id="imp-tb-cart"></tbody>
         </table></div>
       </div>
@@ -479,7 +479,7 @@ window.dash=(()=>{
     <summary>Como os números são calculados</summary>
     <dl>
       <dt>Posições</dt><dd>Vêm da última carteira diária salva de cada fundo. CRIs da BTG são casados pelo ISIN (Pirelli 2 e WT Log pelo código interno da BTG); da XP, pelo código Cetip. Quando um CRI aparece em vários lotes, as quantidades são somadas; linhas com quantidade líquida zero ou PU abaixo de R$ 1 ficam de fora.</dd>
-      <dt>PL e cota gerenciais</dt><dd>Nos fundos com cota mensal, o administrador mantém o PL e a cota parados durante o mês e acumula o resultado na linha "Ajuste de cota mensal". O PL gerencial é o PL oficial sem esse ajuste, e a cota gerencial é o PL gerencial dividido pelo número de cotas. Nos demais fundos, gerencial e oficial são iguais. Os percentuais do PL usam o PL gerencial.</dd>
+      <dt>Patrimônio líquido e cota patrimonial</dt><dd>A cota patrimonial é o patrimônio líquido do fundo dividido pelo número de cotas, na data de cada carteira. Na maioria dos fundos, ela é igual à cota oficial do administrador. Nos fundos com cota mensal (como MCEQ11, MMPD11 e MCEQ2), o administrador mantém o patrimônio e a cota oficiais parados durante o mês e só incorpora o resultado no fechamento; o dashboard mostra o patrimônio e a cota já com o resultado do mês até a data. Os percentuais do PL usam esse patrimônio.</dd>
       <dt>Taxa da curva e cadastro</dt><dd>Da Calculadora de PU CRI: nome, indexador, taxa, vencimento e fundos esperados de cada CRI.</dd>
       <dt>Taxa de MtM</dt><dd>Nos fundos BTG, a coluna de taxa da própria carteira. Nos fundos XP, a taxa do relatório de pricing da Oliveira Trust, porque a carteira XP traz só a taxa de aquisição. Para CDI, a taxa é o spread sobre o CDI.</dd>
       <dt>Efeito da marcação contra a curva</dt><dd>(PU de MtM − PU na curva) × quantidade, e esse valor dividido pelo número de cotas do fundo. O PU na curva é estimado a partir do PU de MtM, descontando o fluxo do cronograma da calculadora pela taxa de MtM e pela taxa da curva (dias úteis/252). É uma estimativa: nos CRIs CDI o spread é tratado como taxa fixa, sem projetar o DI.</dd>
@@ -523,7 +523,7 @@ window.jmFundo = () => dash.params().fundo || 'MCCE11';
 <script>
 /* ---------- cálculos ---------- */
 dash.calc('composicao_view', {
-  title: 'Composição por classe', description: 'Valor de cada classe e participação no PL gerencial do fundo (sem o ajuste de cota mensal).',
+  title: 'Composição por classe', description: 'Valor de cada classe e participação no patrimônio líquido do fundo (sem o ajuste de cota mensal).',
   inputs: ['composicao', 'fundos'],
   fn: (composicao, fundos) => {
     const pl = Object.fromEntries(fundos.map((f) => [f.fundo, f.pl_gerencial]));
@@ -531,7 +531,7 @@ dash.calc('composicao_view', {
   },
 });
 dash.calc('fundos_view', {
-  title: 'Resumo por fundo', description: 'PL gerencial (sem o ajuste de cota mensal), PL oficial, cota, data da carteira e valor por classe de cada fundo.',
+  title: 'Resumo por fundo', description: 'Patrimônio líquido (sem o ajuste de cota mensal), PL oficial, cota, data da carteira e valor por classe de cada fundo.',
   inputs: ['fundos', 'composicao', 'cris_carteira'],
   fn: (fundos, composicao, cris_carteira) => fundos.map((f) => {
     const c = composicao.filter((x) => x.fundo === f.fundo);
@@ -790,7 +790,7 @@ dash.draw('sel-fundo', (sel) => {
 dash.draw('f-pl', (el) => { const r = rowOf('fundos_view', 'fundo', jmFundo()); setText(el, r ? F.big(r.pl) : null); el.dataset.where = 'fundo=' + encodeURIComponent(jmFundo()); });
 dash.draw('f-data', (el) => { const r = rowOf('fundos_view', 'fundo', jmFundo()); setText(el, r ? 'carteira de ' + F.date(r.data_carteira) : null); el.dataset.where = 'fundo=' + encodeURIComponent(jmFundo()); });
 dash.draw('f-cota', (el) => { const r = rowOf('fundos_view', 'fundo', jmFundo()); setText(el, r ? 'R$ ' + F.cota(r.cota_gerencial).replace('+', '') : null); el.dataset.where = 'fundo=' + encodeURIComponent(jmFundo()); });
-dash.draw('f-cota-of', (el) => { const r = rowOf('fundos_view', 'fundo', jmFundo()); setText(el, r ? (Math.abs(r.ajuste_cota_mensal) > 0 ? 'cota oficial R$ ' + F.cota(r.cota_oficial).replace('+', '') + ' (cota mensal)' : 'igual à cota oficial') : null); el.dataset.where = 'fundo=' + encodeURIComponent(jmFundo()); });
+dash.draw('f-cota-of', (el) => { const r = rowOf('fundos_view', 'fundo', jmFundo()); setText(el, r ? (Math.abs(r.ajuste_cota_mensal) > 0 ? 'cota oficial R$ ' + F.cota(r.cota_oficial).replace('+', '') + ', atualizada no fechamento do mês' : 'igual à cota oficial') : null); el.dataset.where = 'fundo=' + encodeURIComponent(jmFundo()); });
 dash.draw('f-cri', (el) => { const r = rowOf('fundos_view', 'fundo', jmFundo()); setText(el, r ? F.pct(r.pct_cri) + ' do PL' : null); el.dataset.where = 'fundo=' + encodeURIComponent(jmFundo()); });
 dash.draw('f-ncri', (el) => { const r = rowOf('fundos_view', 'fundo', jmFundo()); setText(el, r ? F.n0.format(r.n_cris) + ' CRIs' : null); el.dataset.where = 'fundo=' + encodeURIComponent(jmFundo()); });
 dash.draw('f-imp-cota', (el) => {
@@ -811,7 +811,7 @@ dash.draw('f-res', (el) => {
 dash.draw('f-fecha', (el) => {
   const r = rowOf('fundos_view', 'fundo', jmFundo());
   const fecha = r ? (Math.abs(r.diferenca) < 1 ? 'Soma das classes bate com o PL oficial da carteira.' : 'Diferença entre a soma das classes e o PL oficial: R$ ' + F.price(r.diferenca) + '.') : null;
-  const aj = r && Math.abs(r.ajuste_cota_mensal) > 0 ? ' O PL oficial (' + F.big(r.pl_oficial) + ') inclui o ajuste de cota mensal de ' + F.big(r.ajuste_cota_mensal) + '; o PL gerencial exclui esse ajuste para mostrar o resultado do mês até a data.' : '';
+  const aj = r && Math.abs(r.ajuste_cota_mensal) > 0 ? ' O administrador só incorpora o resultado do mês na cota oficial no fechamento: o patrimônio oficial é de ' + F.big(r.pl_oficial) + ', e o patrimônio mostrado aqui já inclui o resultado de ' + F.big(-r.ajuste_cota_mensal) + ' acumulado no mês até a data.' : '';
   setText(el, fecha == null ? null : fecha + aj);
   el.dataset.where = 'fundo=' + encodeURIComponent(jmFundo());
 });
