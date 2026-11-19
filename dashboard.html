@@ -262,16 +262,16 @@ window.dash=(()=>{
         <button type="button" class="jm-tab" data-hq="dia">Dia anterior</button>
       </span>
     </div>
-    <p class="jm-take">Entre <b data-draw="h-d0" data-source="hist_fundos" data-field="data">—</b> e <b data-draw="h-d1" data-source="hist_fundos" data-field="data">—</b>, a cota gerencial do <b data-draw="h-fu">—</b> variou <b data-draw="h-var-cota">—</b>. <b data-draw="h-n-verif">—</b> de <b data-draw="h-n-cris">—</b> CRIs tiveram variação de PU fora do que o fluxo explica (mais de 1%).</p>
+    <p class="jm-take">Entre <b data-draw="h-d0" data-source="hist_fundos" data-field="data">—</b> e <b data-draw="h-d1" data-source="hist_fundos" data-field="data">—</b>, a cota patrimonial do <b data-draw="h-fu">—</b> variou <b data-draw="h-var-cota">—</b>. <b data-draw="h-n-verif">—</b> de <b data-draw="h-n-cris">—</b> CRIs tiveram variação de PU fora do que o fluxo explica (mais de 1%).</p>
     <div class="jm-kpis">
-      <div class="jm-kpi"><span class="lbl">Cota gerencial</span><span class="val" data-draw="h-k-cota" data-source="hist_fundos" data-field="cota_gerencial">—</span><span class="note" data-draw="h-k-cota-n">—</span></div>
-      <div class="jm-kpi"><span class="lbl">PL gerencial</span><span class="val" data-draw="h-k-pl" data-source="hist_fundos" data-field="pl_gerencial">—</span><span class="note" data-draw="h-k-pl-n">—</span></div>
+      <div class="jm-kpi"><span class="lbl">Cota patrimonial</span><span class="val" data-draw="h-k-cota" data-source="hist_fundos" data-field="cota_gerencial">—</span><span class="note" data-draw="h-k-cota-n">—</span></div>
+      <div class="jm-kpi"><span class="lbl">Patrimônio líquido</span><span class="val" data-draw="h-k-pl" data-source="hist_fundos" data-field="pl_gerencial">—</span><span class="note" data-draw="h-k-pl-n">—</span></div>
       <div class="jm-kpi"><span class="lbl">Em CRIs</span><span class="val" data-draw="h-k-cri">—</span><span class="note" data-draw="h-k-cri-n">—</span></div>
       <div class="jm-kpi"><span class="lbl">Variação dos CRIs não explicada pelo fluxo</span><span class="val" data-draw="h-k-rem">—</span><span class="note" data-draw="h-k-rem-n">—</span></div>
     </div>
     <div class="jm-card" id="card-hist-cota">
-      <h2>Cota gerencial no período</h2>
-      <p class="jm-note">Uma marca por carteira salva. A faixa destacada é o intervalo escolhido; clique num ponto para usá-lo como data final.</p>
+      <h2>Cota patrimonial no período</h2>
+      <p class="jm-note">Uma marca por carteira salva. A faixa destacada é o intervalo escolhido; clique num ponto para usá-lo como data final.<span data-draw="h-nota-cota"></span></p>
       <div class="jm-chart jm-chart-sm" data-draw="h-chart" data-source="hist_fundos"></div>
     </div>
     <div class="jm-card" id="card-hist-cris">
@@ -1009,6 +1009,9 @@ dash.draw('tb-notas', (tb) => {
   dash.draw('h-var-cota', (el) => { const {fu, d0, d1} = jmHist(); const a = rowF(fu, d0), b = rowF(fu, d1); setT(el, a && b ? pct(b.cota_gerencial / a.cota_gerencial - 1) : null); });
   dash.draw('h-n-verif', (el) => { const c = ok('hist_cris') && jmHistCris(); setT(el, c ? F.n0.format(c.out.filter((o) => o.sit.startsWith('Verificar')).length) : null); });
   dash.draw('h-n-cris', (el) => { const c = ok('hist_cris') && jmHistCris(); setT(el, c ? F.n0.format(c.out.filter((o) => o.a && o.b).length) : null); });
+  dash.draw('h-nota-cota', (el) => { const {fu} = jmHist(); const h = ok('hist_fundos') || [];
+    const mensal = h.some((r) => r.fundo === fu && r.ajuste_cota_mensal);
+    el.textContent = mensal ? ' No ' + fu + ', o administrador só atualiza a cota oficial no fechamento de cada mês; aqui a cota mostra o resultado do fundo dia a dia.' : ''; });
   dash.draw('h-k-cota', (el) => { const {fu, d1} = jmHist(); const b = rowF(fu, d1); setT(el, b ? 'R$ ' + F.cota(b.cota_gerencial).replace('+', '') : null); if (b) el.dataset.where = 'id=' + encodeURIComponent(b.id); });
   dash.draw('h-k-cota-n', (el) => { const {fu, d0, d1} = jmHist(); const a = rowF(fu, d0), b = rowF(fu, d1); setT(el, a && b ? pct(b.cota_gerencial / a.cota_gerencial - 1) + ' desde ' + F.date(d0) : null); });
   dash.draw('h-k-pl', (el) => { const {fu, d1} = jmHist(); const b = rowF(fu, d1); setT(el, b ? F.big(b.pl_gerencial) : null); if (b) el.dataset.where = 'id=' + encodeURIComponent(b.id); });
@@ -1030,7 +1033,7 @@ dash.draw('tb-notas', (tb) => {
       const rows = h.filter((r) => r.fundo === fu).sort((a, b) => a.data < b.data ? -1 : 1).map((r) => ({...r, t: new Date(r.data + 'T12:00:00Z')}));
       if (!rows.length) { el.textContent = '—'; return; }
       const W = Math.max(el.clientWidth, 280), H = 260, m = {t: 12, r: 16, b: 28, l: 8};
-      const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Cota gerencial de ' + fu + ' em cada carteira salva');
+      const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('role', 'img').attr('aria-label', 'Cota patrimonial de ' + fu + ' em cada carteira salva');
       const ext = d3.extent(rows, (r) => r.cota_gerencial), pad = (ext[1] - ext[0]) * 0.08 || ext[0] * 0.01;
       const y = d3.scaleLinear([ext[0] - pad, ext[1] + pad], [H - m.b, m.t]).nice(5);
       const tmp = svg.append('g'); let lw = 0;
