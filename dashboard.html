@@ -118,6 +118,8 @@ window.dash=(()=>{
 .jm td{padding:0.45rem 0.6rem;border-bottom:1px solid rgba(191,191,191,0.35);color:#737373;vertical-align:top}
 .jm td.wrap{min-width:14rem}
 .jm tr.tot td{color:#03276F;border-top:1px solid #BFBFBF}
+.jm tr.sub td{font-size:0.72rem;color:#949494;padding-top:0.3rem;padding-bottom:0.3rem}
+.jm tr.sub td:first-child{padding-left:1.6rem}
 .jm .pos{color:#00663C}
 .jm .neg{color:#03276F}
 .jm .muted{color:#949494}
@@ -285,7 +287,7 @@ window.dash=(()=>{
     <div class="jm-grid">
       <div class="jm-card" id="card-hist-comp">
         <h2>PL por classe</h2>
-        <p class="jm-note">Valor de cada classe nas duas datas.</p>
+        <p class="jm-note">Valor de cada classe nas duas datas. Os valores a pagar e provisões aparecem abertos por tipo, como constam na carteira do administrador.</p>
         <div class="jm-tablebox short">
           <table data-source="hist_composicao">
             <thead><tr><th>Classe</th><th class="n">De (R$)</th><th class="n">Até (R$)</th><th class="n">Variação (R$)</th></tr></thead>
@@ -979,7 +981,7 @@ dash.draw('tb-notas', (tb) => {
   dash.draw('h-sel-fundo', (sel) => {
     const h = ok('hist_fundos');
     const fs = h ? [...new Set(h.map((r) => r.fundo))] : [];
-    sel.replaceChildren(...fs.map((f) => { const n = h.filter((r) => r.fundo === f).length; return new Option(f + ' · ' + n + (n === 1 ? ' carteira' : ' carteiras'), f); }));
+    sel.replaceChildren(...fs.map((f) => new Option(f, f)));
     sel.value = fundoH();
     sel.onchange = () => dash.setParams({fundo: sel.value, hb: null, hc: null});
   });
@@ -1087,8 +1089,17 @@ dash.draw('tb-notas', (tb) => {
     if (!h || !d0) return;
     const m = new Map();
     h.forEach((r) => { if (r.fundo === fu && (r.data === d0 || r.data === d1)) { const o = m.get(r.classe) || {a: 0, b: 0}; if (r.data === d0) o.a += r.valor; if (r.data === d1) o.b += r.valor; m.set(r.classe, o); } });
+    const hp = ok('hist_pagar') || [];
     [...m.entries()].sort((x, y) => y[1].b - x[1].b).forEach(([k, o]) => {
       const tr = document.createElement('tr'); jmCell(tr, k); jmCell(tr, F.money(o.a), 'n'); jmCell(tr, F.money(o.b), 'n'); jmCell(tr, F.money(o.b - o.a), 'n ' + (o.b - o.a >= 0 ? 'pos' : 'neg')); tb.appendChild(tr);
+      if (k !== 'Valores a pagar e provisões') return;
+      // abre o que compõe a linha: taxas, impostos, provisões etc., com os nomes da carteira em linguagem simples
+      const it = new Map();
+      hp.forEach((r) => { if (r.fundo === fu && (r.data === d0 || r.data === d1)) { const x = it.get(r.item) || {a: 0, b: 0}; if (r.data === d0) x.a += r.valor; if (r.data === d1) x.b += r.valor; it.set(r.item, x); } });
+      [...it.entries()].sort((x, y) => Math.min(x[1].a, x[1].b) - Math.min(y[1].a, y[1].b)).forEach(([nome, x]) => {
+        const sr = document.createElement('tr'); sr.className = 'sub';
+        jmCell(sr, nome); jmCell(sr, x.a ? F.money(x.a) : '—', 'n'); jmCell(sr, x.b ? F.money(x.b) : '—', 'n'); jmCell(sr, F.money(x.b - x.a), 'n'); tb.appendChild(sr);
+      });
     });
     const a = rowF(fu, d0), b = rowF(fu, d1);
     if (a && b) { const tr = document.createElement('tr'); tr.className = 'tot'; jmCell(tr, 'PL oficial'); jmCell(tr, F.money(a.pl), 'n'); jmCell(tr, F.money(b.pl), 'n'); jmCell(tr, F.money(b.pl - a.pl), 'n'); tb.appendChild(tr); }
@@ -1195,6 +1206,31 @@ const OT_FUNDOS={'MAUA FII':'MCCE11','MAUA CAPITAL HIGH GRADE FII - RESP LTDA':'
 /* CRIs da BTG sem ISIN na carteira: casados pelo código interno da BTG (Cod. Ativo) */
 const BTG_COD_INTERNO={'7100177':'23A0297064','15554406':'25A1296532'}; // WT Log, Pirelli 2
 
+/* nome legível de cada item de "Valores a pagar e provisões" (para quem não é da área) */
+const PAGAR_ROTULOS=[
+  [/PERFORMANCE/,'Taxa de performance'],
+  [/GEST[AÃ]O|TX DE GESTAO/,'Taxa de gestão'],
+  [/ESCRITURA/,'Taxa de escrituração'],
+  [/ADMINISTRA|TX\.?ADM/,'Taxa de administração'],
+  [/AUDITORIA/,'Auditoria'],
+  [/\bIR\b|IMPOSTO DE RENDA|PROVISAO DE IR|IOF/,'Imposto de renda'],
+  [/IPTU/,'IPTU dos imóveis'],
+  [/CAUCAO/,'Cauções de inquilinos a devolver'],
+  [/PDD|PERDA COM ALUG/,'Provisão para aluguéis não recebidos'],
+  [/IMOVEIS ATIVAR|CAPEX/,'Obras e melhorias nos imóveis (capex)'],
+  [/REPASSAR/,'Aluguéis a repassar a sócios dos imóveis'],
+  [/DISTRIBUI|A PAGAR COTISTA|RENDIMENTO.*COTISTA/,'Rendimentos a distribuir aos cotistas'],
+  [/CONCILIAR|ESTORNAR/,'Valores a conciliar'],
+  [/CETIP|SELIC|CVM|ANBI|FISCALIZA|REGISTRO|B3|CUSTODIA/,'Taxas de registro, custódia e fiscalização'],
+  [/CAPITAL PROPRIO/,'Juros sobre capital próprio a receber'],
+  [/AMORTIZAR|RENDIMENTO A RECEBER/,'Rendimentos e amortizações de fundos a receber'],
+  [/VENDA DE ATIVOS/,'Venda de ativos a liquidar'],
+  [/CASHBACK/,'Devolução de taxa de gestão'],
+  [/CONDOMINIO|SEGURO|MANUTEN|ALUGUEL/,'Despesas com imóveis'],
+  [/DESPESA|AJUSTE/,'Outras despesas do fundo'],
+];
+function rotuloPagar(nome, alt){ const K=norm(nome); for(const [re,r] of PAGAR_ROTULOS) if(re.test(K)) return r; const t=String(alt||nome||'').trim().toLowerCase(); return t? t[0].toUpperCase()+t.slice(1) : 'Outros'; }
+
 const ehCaixa=(nome)=>/SOBERANO|SELIC|RENDA FIXA|REF DI|\bRF\b|\bDI\b/.test(norm(nome));
 
 /* ---------- identificação do arquivo ---------- */
@@ -1295,16 +1331,19 @@ function lerBTG(arquivo, sheets, ctx, id){
   // Linhas do resumo sem detalhe
   const RECEBER=['A RECEBER ALUGUEL','IR A COMPENSAR RV'];
   const OUTROS=['C/C SALDO FUNDO','DEBENTURES'];
+  const pagar=[];
+  const ATIVOS=['CRI','PORTFOLIO INVESTIDO','OPERACAO COMPROMISSADA','LFT','SWAP','LCI','ATIVO IMOBILIARIO','LTN','NTN-B','NTNB','LF','LCA','CDB'];
   for(const [k,v] of Object.entries(resumo)){
     const K=norm(k);
     if(K==='AJUSTE CARTEIRA NEGATIVO') add('Custo de oferta diferido',v);
     else if(K==='AJUSTE COTA MENSAL') add('Ajuste de cota mensal',v);
     else if(RECEBER.map(norm).includes(K)) add('Valores a receber',v);
     else if(OUTROS.map(norm).includes(K)) add('Outros',v);
+    else if(!ATIVOS.includes(K) && v) pagar.push({item:rotuloPagar(k), valor:v});
   }
   if(outrosExcl) add('Outros',outrosExcl);
   const ajusteRaw=resumo['AJUSTE COTA MENSAL']||0, ajuste=r2(ajusteRaw);
-  return fechar({fundo:id.fundo, adm:'BTG', data:id.data, arquivo, pl, qtd_cotas:qtd, cota, ajuste, ajusteRaw, comp, compRaw, pos, cris, avisos:av});
+  return fechar({fundo:id.fundo, adm:'BTG', data:id.data, arquivo, pl, qtd_cotas:qtd, cota, ajuste, ajusteRaw, comp, compRaw, pos, cris, pagar, avisos:av});
 }
 function fmtTaxa(v){ const n=num(v); return n==null? String(v==null?'':v).trim() : String(n); }
 
@@ -1343,6 +1382,10 @@ function lerXP(arquivo, sheets, ctx, id){
   }
   // Compromissadas (passivo)
   for(const o of linhas('Renda Fixa | Compromissada')) add('Compromissadas (passivo)', num(o['Valor Total'])||0);
+  // Valores a pagar: detalhe por tipo
+  const pagar=[];
+  for(const o of linhas('Valores a Pagar')){ const v=num(o['Valor Total'])||0; if(!v) continue;
+    const nome=String(o['Histórico']||'')+' '+String(o['Complemento Histórico']||''); pagar.push({item:rotuloPagar(nome, o['Histórico']), valor:v}); }
   // Valores a receber
   for(const o of linhas('Valores a Receber')) add('Valores a receber', num(o['Valor Total'])||0);
   // CRIs (Renda Fixa | Definitiva), somando lotes
@@ -1362,7 +1405,7 @@ function lerXP(arquivo, sheets, ctx, id){
       quantidade:q, pu, valor:r2(v), taxa: tx==null? null : rn(tx/100,6), tipo_taxa:'Aquisição', cadastrado:!!cad});
     add('CRI', r2(v));
   }
-  return fechar({fundo:id.fundo, adm:'XP', data:id.data, arquivo, pl, qtd_cotas:qtd, cota, ajuste:0, ajusteRaw:0, comp, compRaw, pos, cris, avisos:av});
+  return fechar({fundo:id.fundo, adm:'XP', data:id.data, arquivo, pl, qtd_cotas:qtd, cota, ajuste:0, ajusteRaw:0, comp, compRaw, pos, cris, pagar, avisos:av});
 }
 
 /* fecha a carteira: valores a pagar e provisões = PL − demais classes; checagens */
@@ -1375,6 +1418,13 @@ function fechar(c){
   const soma=Object.values(comp).reduce((s,v)=>s+v,0);
   comp['Valores a pagar e provisões']=r2(r2(c.pl||0)-soma);
   c.comp=comp;
+  // detalhe de valores a pagar: agrupado por tipo; a diferença para o total vira "Outros ajustes"
+  const g=new Map(); (c.pagar||[]).forEach(x=>g.set(x.item,(g.get(x.item)||0)+x.valor));
+  const det=[...g.entries()].map(([item,v])=>({item, valor:r2(v)})).filter(x=>x.valor!==0);
+  const dif=r2(comp['Valores a pagar e provisões']-det.reduce((s,x)=>s+x.valor,0));
+  if(Math.abs(dif)>=1) det.push({item:'Outros ajustes', valor:dif});
+  else if(dif && det.length){ const m=det.reduce((a,b)=>Math.abs(b.valor)>Math.abs(a.valor)?b:a); m.valor=r2(m.valor+dif); } // centavos de arredondamento
+  c.pagar=det.sort((a,b)=>a.valor-b.valor);
   if(c.pl!=null && c.qtd_cotas){
     const cc=c.pl/c.qtd_cotas;
     if(c.cota && Math.abs(cc/c.cota-1)>0.0001) c.avisos.push({nivel:'aviso', msg:c.fundo+' '+br(c.data)+': PL ÷ cotas dá '+cc.toFixed(4)+', mas o arquivo informa cota de '+c.cota.toFixed(4)+'.'});
@@ -1516,6 +1566,7 @@ function linhasHist(c){
       cota_gerencial:rn((c.pl-c.ajusteRaw)/c.qtd_cotas,8), ajuste_cota_mensal:c.ajuste, arquivo:c.arquivo}],
     hist_composicao:Object.entries(c.comp).map(([k,v])=>({id:pre+'|'+k, fundo:f, data:d, classe:k, valor:v})),
     hist_posicoes:c.pos.map(p=>({id:pre+'|'+p.classe+'|'+p.ativo, fundo:f, data:d, classe:p.classe, ativo:p.ativo, quantidade:p.quantidade, preco:p.preco, valor:p.valor})),
+    hist_pagar:(c.pagar||[]).map(x=>({id:pre+'|'+x.item, fundo:f, data:d, item:x.item, valor:x.valor})),
     hist_cris:c.cris.map(x=>({id:pre+'|'+x.cetip, fundo:f, data:d, cetip:x.cetip, nome:x.nome, quantidade:x.quantidade, pu:x.pu, valor:x.valor, taxa:x.taxa, tipo_taxa:x.tipo_taxa, data_ant:null, fator_esperado:null}))
   };
 }
@@ -1585,7 +1636,7 @@ function processar(atual, leituras, ctxBase){
   if(cart.size){
     const chaves=new Set(cart.keys());
     const existentes=new Set((B.hist_fundos||[]).map(h=>h.fundo+'|'+h.data));
-    const HB=['hist_fundos','hist_composicao','hist_posicoes','hist_cris'];
+    const HB=['hist_fundos','hist_composicao','hist_posicoes','hist_cris','hist_pagar'];
     for(const k of HB){
       const antes=(B[k]||[]).length;
       B[k]=(B[k]||[]).filter(r=>!chaves.has(r.fundo+'|'+r.data));
@@ -1778,7 +1829,7 @@ async function importarDados(ev){
 /* ---------- tela "Importar carteiras" ---------- */
 (function(){
 const M=window.MotorCarteiras;
-const BASES_ORDEM=['fundos','composicao','cris_carteira','posicoes','precos_medios','maua_report','pu_curva','notas','hist_fundos','hist_cris','hist_composicao','hist_posicoes'];
+const BASES_ORDEM=['fundos','composicao','cris_carteira','posicoes','precos_medios','maua_report','pu_curva','notas','hist_fundos','hist_cris','hist_composicao','hist_posicoes','hist_pagar'];
 const fmtR=(v)=> v==null||!isFinite(v)? '—' : 'R$ '+(Math.abs(v)>=1e6? (v/1e6).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})+' mi' : v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
 const fmtN=(v,d=0)=> v==null||!isFinite(v)? '—' : v.toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const br=(s)=> s? s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4) : '';
@@ -1859,7 +1910,7 @@ function mostrarPrevia(){
   const chaves=new Set(R.carteiras.filter(c=>c.substitui).map(c=>c.fundo+'|'+c.data));
   el('imp-card-conf').hidden=!chaves.size;
   if(chaves.size){
-    const HB=['hist_fundos','hist_composicao','hist_posicoes','hist_cris']; let ex=[];
+    const HB=['hist_fundos','hist_composicao','hist_posicoes','hist_cris','hist_pagar']; let ex=[];
     el('imp-tb-conf').innerHTML=HB.map(b=>{ const c=comparar(b, res.bases[b]||[], atual, chaves); ex=ex.concat(c.exemplos);
       return `<tr><td>${b}</td><td class="n">${fmtN(c.iguais)}</td><td class="n">${c.dif? '<b>'+fmtN(c.dif)+'</b>':'0'}</td><td class="n">${fmtN(c.novas)}</td><td class="n">${fmtN(c.sumiram)}</td></tr>`; }).join('');
     el('imp-tb-difs').innerHTML= ex.length? ex.slice(0,200).map(([b,id,c,a,n])=>`<tr><td>${esc(id)}</td><td>${esc(c)}</td><td class="n">${esc(a)}</td><td class="n">${esc(n)}</td></tr>`).join('')
